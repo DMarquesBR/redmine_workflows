@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hash>
+  <id type="integer">15</id>
+  <before-save>@old_status = @issue.status_id_was</before-save>
+  <created-at type="dateTime">2025-01-16T14:55:57Z</created-at>
+  <updated-at type="dateTime">2025-01-16T14:55:57Z</updated-at>
+  <name>timer_v4</name>
+  <description></description>
+  <string></string>
+  <position type="integer">9</position>
+  <integer type="integer">1</integer>
+  <after-save>if @issue&amp;.id
+    # Status categories
+    planning = [2]
+    execution = [4, 5]
+    stopped = [1, 3, 6]
+
+    STATUS_CATEGORIES = {
+      planning: planning,
+      execution: execution,
+      running: planning + execution,
+      stopped: stopped
+    }.freeze
+  
+    old_status = @old_status
+    new_status = @issue.status_id
+  
+    Rails.logger.info("****** OLD ##{old_status} *** NEW ##{new_status}")
+  
+    # Timer creation logic
+    def create_timer(issue, timer_type)
+      timer = IssueTimer.new(
+        issue_id: issue.id,
+        timer_start: Time.now.utc,
+        timer_type: timer_type
+      )
+      if timer.save
+        Rails.logger.info("Timer created successfully for issue ##{issue.id}")
+      else
+        Rails.logger.error("Failed to create timer for issue ##{issue.id}: #{timer.errors.full_messages.join(', ')}")
+        raise WorkflowError, 'Failed to create timer entry'
+      end
+    end
+  
+    # Timer stopping logic
+    def stop_timer(issue)
+      existing_timer = IssueTimer.find_by(issue_id: issue.id, timer_stop: nil)
+      if existing_timer&amp;.update(timer_stop: Time.now.utc)
+        Rails.logger.info("Timer stopped successfully for issue ##{issue.id}")
+      elsif existing_timer
+        Rails.logger.error("Failed to stop timer for issue ##{issue.id}: #{existing_timer.errors.full_messages.join(', ')}")
+        raise WorkflowError, 'Failed to stop timer'
+      end
+    end
+  
+    # Determine timer type
+    def determine_timer_type(new_status, categories)
+      if categories[:planning].include?(new_status)
+        'inicio'
+      elsif categories[:execution].include?(new_status)
+        'solucao'
+      else
+        'type not found'
+      end
+    end
+  
+    # Transition from "stopped" to "running"
+    if STATUS_CATEGORIES[:stopped].include?(old_status) &amp;&amp; STATUS_CATEGORIES[:running].include?(new_status)
+      Rails.logger.info("******** DE PARADO PARA ANDANDO *********")
+      existing_timer = IssueTimer.find_by(issue_id: @issue.id, timer_stop: nil)
+      create_timer(@issue, determine_timer_type(new_status, STATUS_CATEGORIES)) if existing_timer.nil?
+    end
+  
+    # Transition from "running" to "stopped"
+    if STATUS_CATEGORIES[:running].include?(old_status) &amp;&amp; STATUS_CATEGORIES[:stopped].include?(new_status)
+      Rails.logger.info("******** DE ANDANDO PARA PARADO *********")
+      stop_timer(@issue)
+    end
+  end
+  </after-save>
+  <is-for-all type="boolean">true</is-for-all>
+  <author></author>
+  <active type="boolean">true</active>
+  <observable>issue</observable>
+  <shared-code nil="true"/>
+  <before-add nil="true"/>
+  <after-add nil="true"/>
+  <before-remove nil="true"/>
+  <after-remove nil="true"/>
+  <before-destroy></before-destroy>
+  <after-destroy></after-destroy>
+  <exported-at>2025-01-28T19:58:56Z</exported-at>
+  <plugin-version>3.0.0</plugin-version>
+  <ruby-version>3.2.6-p234</ruby-version>
+  <rails-version>7.2.2</rails-version>
+</hash>
