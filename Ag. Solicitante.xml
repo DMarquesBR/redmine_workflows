@@ -1,54 +1,38 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<hash>
-  <id type="integer">17</id>
-  <before-save>begin
-  # Verifique se o status antigo é 5 e o atual é 6
+# Custom Workflow
+# Before Save
+
+begin
+  # Número do status "Aguardando Solicitante"
+  ag_solicitante = 7
+
+  # Número do status "Retornar para a Fábrica"
+  retornar_fabrica = 17
+
+  # Obtém os status antigo e atual
   old_status = @issue.status_id_was.to_i
   current_status = @issue.status_id.to_i
 
-  if old_status == 5 &amp;&amp; current_status == 6
+  # Verifica se o status da demanda foi alterado de "Aguardando Solicitante"
+  # para "Retornar para Fábrica"
+  if old_status == ag_solicitante && current_status == retornar_fabrica
     # Obtenha o histórico de status da issue
     previous_statuses = @issue.journals.map do |journal|
       journal.details.find { |detail| detail.prop_key == 'status_id' }
-    end.compact.map(&amp;:old_value).map(&amp;:to_i)
+    end.compact.map(&:old_value).map(&:to_i)
 
-    # Obtenha o valor de s-1 (último status anterior imediato)
+    # Obtenha o valor do status anterior ao "Aguardando Solicitante"
     s_minus_1 = previous_statuses[-1]
 
     # Alterar o status para s-1, se existir
     if s_minus_1
       @issue.status_id = s_minus_1
-      logger.info "+++++ Status alterado automaticamente para o anterior imediato (s-1): #{s_minus_1}"
+      logger.info "[FLUXO AG. SOLICITANTE] Status alterado automaticamente para o anterior imediato (s-1): #{s_minus_1}"
     else
-      logger.warn "+++++ Não foi possível alterar o status: status anterior (s-1) não encontrado"
+      logger.warn "[FLUXO AG. SOLICITANTE] Não foi possível alterar o status: status anterior (s-1) não encontrado"
     end
   else
-    logger.info "+++++ Condições não atendidas: @old_status = #{old_status}, status atual = #{current_status}"
+    logger.info "[FLUXO AG. SOLICITANTE] Condições não atendidas: @old_status = #{old_status}, status atual = #{current_status}"
   end
-rescue =&gt; e
-  logger.error "+++++ Erro ao processar o script de status: #{e.message}"
-end</before-save>
-  <created-at type="dateTime">2025-01-28T19:32:26Z</created-at>
-  <updated-at type="dateTime">2025-01-28T19:52:07Z</updated-at>
-  <name>Ag. Solicitante</name>
-  <description>Devolve uma demanda que estava "Aguardando Solicitante" ao seu status anterior</description>
-  <string></string>
-  <position type="integer">11</position>
-  <integer type="integer">1</integer>
-  <after-save></after-save>
-  <is-for-all type="boolean">true</is-for-all>
-  <author></author>
-  <active type="boolean">true</active>
-  <observable>issue</observable>
-  <shared-code nil="true"/>
-  <before-add nil="true"/>
-  <after-add nil="true"/>
-  <before-remove nil="true"/>
-  <after-remove nil="true"/>
-  <before-destroy></before-destroy>
-  <after-destroy></after-destroy>
-  <exported-at>2025-01-28T19:57:49Z</exported-at>
-  <plugin-version>3.0.0</plugin-version>
-  <ruby-version>3.2.6-p234</ruby-version>
-  <rails-version>7.2.2</rails-version>
-</hash>
+rescue => e
+  logger.error "[FLUXO AG. SOLICITANTE] Erro ao processar o script de status: #{e.message}"
+end
