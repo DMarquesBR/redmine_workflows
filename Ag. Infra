@@ -1,0 +1,48 @@
+# COLAR EM BEFORE-SAVE
+
+begin
+  # Número do status "Aguardando Infra"
+  ag_infra = 14
+
+  # Número do status "Retornar para a Fábrica"
+  retornar_fabrica = 17
+
+  # ID do campo personalizado "Chamado Infra"
+  id_campo_chamado_infra = 14 # Substitua pelo ID correto
+
+  # Obtém os status antigo e atual
+  old_status = @issue.status_id_was.to_i
+  current_status = @issue.status_id.to_i
+
+  # Verifica se o status da demanda foi alterado de "Aguardando Infra"
+  # para "Retornar para Fábrica"
+  if old_status == ag_infra && current_status == retornar_fabrica
+    # Obtenha o histórico de status da issue
+    previous_statuses = @issue.journals.map do |journal|
+      journal.details.find { |detail| detail.prop_key == 'status_id' }
+    end.compact.map(&:old_value).map(&:to_i)
+
+    # Obtenha o valor do status anterior ao "Aguardando Infra"
+    s_minus_1 = previous_statuses[-1]
+
+    # Alterar o status para s-1, se existir
+    if s_minus_1
+      @issue.status_id = s_minus_1
+      logger.info "[FLUXO AG. INFRA] Status alterado automaticamente para o anterior imediato (s-1): #{s_minus_1}"
+    else
+      logger.warn "[FLUXO AG. INFRA] Não foi possível alterar o status: status anterior (s-1) não encontrado"
+    end
+
+    # Limpar o campo personalizado de forma segura
+    if @issue.custom_field_value(id_campo_chamado_infra).present?
+      @issue.custom_field_values = { id_campo_chamado_infra => '' }
+      logger.info "[FLUXO AG. INFRA] Valor do campo personalizado (ID: #{id_campo_chamado_infra}) apagado com sucesso."
+    else
+      logger.info "[FLUXO AG. INFRA] Campo personalizado (ID: #{id_campo_chamado_infra}) já estava vazio."
+    end
+  else
+    logger.info "[FLUXO AG. INFRA] Condições não atendidas: old_status = #{old_status}, status atual = #{current_status}"
+  end
+rescue => e
+  logger.error "[FLUXO AG. INFRA] Erro ao processar o script de status: #{e.message}"
+end
