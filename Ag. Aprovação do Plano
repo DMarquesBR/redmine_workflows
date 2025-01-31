@@ -1,0 +1,34 @@
+# COLAR EM BEFORE-SAVE
+
+begin
+  # Definição dos status
+  # Aguardando Validação do Plano de Trabalho ou da História de Usuário
+  ag_validacao_plano = 16
+
+  # Caso seja validado(a), sua nova situação será "Aprovada para Execução"
+  plano_aprovado = 21
+  aprovada_para_execucao = 8
+
+  # Caso reprovado(a), sua nova situação será "Em l"
+  plano_reprovado = 22
+  em planejamento = 2
+
+  # Obtém os status antigo e atual
+  old_status = @issue.status_id_was.to_i
+  current_status = @issue.status_id.to_i
+
+  # Verifica as condições e altera o status conforme necessário
+  if old_status == ag_validacao_plano && current_status == plano_aprovado
+    @issue.status_id = aprovada_para_execucao
+    logger.info "[FLUXO AG. HOMOLOGACAO] Status alterado automaticamente para: #{em_execucao}"
+  
+  elsif old_status == ag_validacao_plano && current_status == plano_reprovado
+    @issue.status_id = em_planejamento
+    logger.info "[FLUXO AG. HOMOLOGACAO] Status alterado automaticamente para: #{aprovada_para_execucao}"
+
+  else
+    logger.info "[FLUXO AG. HOMOLOGACAO] Condições não atendidas: @old_status = #{old_status}, status atual = #{current_status}"
+  end
+rescue => e
+  logger.error "[FLUXO AG. HOMOLOGACAO] Erro ao processar o script de status: #{e.message}"
+end
