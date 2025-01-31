@@ -1,0 +1,34 @@
+# COLAR EM BEFORE-SAVE
+
+begin
+  # Definição dos status
+  # Aguardando Homologação
+  ag_homologacao = 10
+
+  # Caso a demanda seja homologada, sua nova situação será "Aprovada para Produção"
+  demanda_homologada = 19
+  aprovada_para_producao = 11
+
+  # Caso não seja homologada, sua nova situação será "Em execução"
+  demanda_nao_homologada = 20
+  em execução = 9
+
+  # Obtém os status antigo e atual
+  old_status = @issue.status_id_was.to_i
+  current_status = @issue.status_id.to_i
+
+  # Verifica as condições e altera o status conforme necessário
+  if old_status == ag_homologacao && current_status == demanda_homologada
+    @issue.status_id = aprovada_para_producao
+    logger.info "[FLUXO AG. HOMOLOGACAO] Status alterado automaticamente para: #{em_execucao}"
+  
+  elsif old_status == ag_homologacao && current_status == demanda_nao_homologada
+    @issue.status_id = em_execução
+    logger.info "[FLUXO AG. HOMOLOGACAO] Status alterado automaticamente para: #{aprovada_para_producao}"
+
+  else
+    logger.info "[FLUXO AG. HOMOLOGACAO] Condições não atendidas: @old_status = #{old_status}, status atual = #{current_status}"
+  end
+rescue => e
+  logger.error "[FLUXO AG. HOMOLOGACAO] Erro ao processar o script de status: #{e.message}"
+end
